@@ -6,7 +6,7 @@ from settings import settings
 
 
 def renameFiles():
-    #Start by parsing the new file format. The result is an array of tuples of the form (a,b), where a is either "string" or "group" and b is the content of the string or the number of the group.
+    #Start by parsing the new file format. The result is an array of tuples of the form (a,b), where a is either "string", "group", or "intgroup" and b is the content of the string or the number of the group. In case of "intgroup", b is a tuple (b_1,b_2), where b_1 is the number of the group and b_2 is a number that will be added/subtracted
     newNameFormat = []
 
     rawNameFormat = settings['NewFileFormat']
@@ -17,6 +17,8 @@ def renameFiles():
     lastPositionParsed = -1
     currentlyParsingGroup = False
     groupStartPosition = -1
+    foundIntGroup = False
+    positionOfIntGroupPlusMinus = -1
     skipUntilPosition = -1
     for i in range(0, len(rawNameFormat)):
         if i < skipUntilPosition:
@@ -48,21 +50,44 @@ def renameFiles():
                     logging.error("The name format string contains a '#' (pos {groupStartPosition}) that is not followed by '('. Stopping program.")
                     return
             else:
-                allowedChars = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ")"]
+                numbers = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+                intgroupoperators = ["+", "-"]
+                allowedChars = numbers + intgroupoperators +  [")"]
                 if rawNameFormat[i] not in allowedChars:
-                    logging.error(f"The name format string contains a '#' group (pos {groupStartPosition}) with non-number characters. Stopping program.")
+                    logging.error(f"The name format string contains a '#' group (pos {groupStartPosition}) with non-number characters that are also not '+' or '-'. Stopping program.")
                     return
+                
+                #Handle group opening
+                if i == groupStartPosition + 2 and rawNameFormat[i] not in numbers:
+                    logging.error(f"The name format string contains a non-empty '#' group (pos {groupStartPosition}) that does not start with a number. Stopping program.")
+                    return
+                
+                #Handle +/- special cases
+                if rawNameFormat[i] in intgroupoperators:
+                    if foundIntGroup:
+                        logging.error(f"The name format string contains a '#' group (pos {groupStartPosition}) with more than one '+'/'-'. Stopping program.")
+                        return
+                    else:
+                        foundIntGroup = True
+                        positionOfIntGroupPlusMinus = i
+
+
                 
                 #Handle group closing:
                 if rawNameFormat[i] == ")":
-                    # if i == groupStartPosition + 2:
-                    #     logging.error(f"The name format string contains a '#' group (pos {groupStartPosition}) without a number. Stopping program.")
-                    #     return
 
+                    if not foundIntGroup:
+                        newNameFormat.append(["group", int(rawNameFormat[groupStartPosition + 2 : i]) ])
+                    else:
+                        groupNumber = int(rawNameFormat[groupStartPosition + 2 : positionOfIntGroupPlusMinus])
+                        intToBeAdded = int(rawNameFormat[positionOfIntGroupPlusMinus + 1 : i])
+                        if rawNameFormat[positionOfIntGroupPlusMinus] == "-":
+                            intToBeAdded = -1 * intToBeAdded
+                        newNameFormat.append(["intgroup", [groupNumber, intToBeAdded]])
 
-                    newNameFormat.append(["group", int(rawNameFormat[groupStartPosition + 2 : i]) ])
                     lastPositionParsed = i
                     currentlyParsingGroup = False
+                    foundIntGroup = False
     
     #Finalize String parsing:
     if currentlyParsingGroup:
@@ -121,6 +146,10 @@ def renameSingleFile(file, regex, newNameFormat, testrun):
                 newName += part[1]
             elif part[0] == "group":
                 newName += match.group(part[1] % (len(match.groups()) + 1))
+            elif part[0] == "intgroup":
+                number = int(match.group(part[1][0] % (len(match.groups()) + 1)))
+                number = number + part[1][1]
+                newName += str(number)
 
         if testrun:
             print(f"{file}   -->   {newName}")
