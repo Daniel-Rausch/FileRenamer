@@ -1,4 +1,4 @@
-from yaml import load, dump, YAMLError
+from yaml import safe_load, dump, YAMLError
 
 import logging
 
@@ -9,14 +9,17 @@ __defaultSettings = {
     'LoggingLevel': 'INFO',
     'Path' : '', # Folder containing the files to be renamed
     'FileRegex': '', # Regex identifying files to be renamed
-    'NewFileFormat': '', # Format for renaming. Supports special string "#(n)", where "n" is a number. This will be replaced with the group n of the regex match, modulo the number of groups. The string "#()" is interpreted as "#"".
+    'NewFileFormat': '', # Format for renaming.
+        # Supports special string "#(n)", where "n" is a number. This will be replaced with the group n of the regex match, modulo the number of groups.
+        # Also suppurts "#(n+z)", where the n-th group will be interpreted as an integer which will be increases by z. Analogously for "#(n-z)".
+        # The string "#()" is interpreted as "#"".
     }
 
 
 #Read the settings.yml file
 try:
     with open('settings.yml', 'r') as file:
-        settings = load(file)
+        settings = safe_load(file)
         if settings is None:
             settings = {}
 except YAMLError as e:

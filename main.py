@@ -50,7 +50,7 @@ def renameFiles():
                     logging.error("The name format string contains a '#' (pos {groupStartPosition}) that is not followed by '('. Stopping program.")
                     return
             else:
-                numbers = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+                numbers = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
                 intgroupoperators = ["+", "-"]
                 allowedChars = numbers + intgroupoperators +  [")"]
                 if rawNameFormat[i] not in allowedChars:
@@ -114,6 +114,7 @@ def renameFiles():
     
     count = 0
     for file in filelist:
+        logging.debug(f"Checking file '{file}' against regex.")
         if renameSingleFile(file, regex, newNameFormat, True):
             count += 1
     
